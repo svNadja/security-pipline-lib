@@ -31,7 +31,8 @@ jobs:
           python-version: '3.12'
 
       - name: Semgrep installieren
-        run: pip install semgrep==1.95.0
+        # setuptools<81: opentelemetry (Abhaengigkeit von semgrep) braucht pkg_resources
+        run: pip install semgrep==1.95.0 "setuptools<81"
 
       - name: Semgrep ausfuehren
         env:
