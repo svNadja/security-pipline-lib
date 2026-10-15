@@ -1,0 +1,64 @@
+name: npm-audit
+
+# Wiederverwendbare SCA fuer npm: findet alle package-lock.json im Repo und prueft jedes Projekt.
+# Nur Bericht (nicht blockierend). Reports landen in reports/.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Alle npm-Projekte finden
+        id: set-matrix
+        run: |
+          projects=$(find . -name "package-lock.json" -not -path "*/node_modules/*" \
+            | sed 's|/package-lock.json$||; s|^\./||' | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "Gefundene Projekte: $projects"
+          echo "matrix=$projects" >> "$GITHUB_OUTPUT"
+
+  npm-audit:
+    needs: discover-projects
+    if: needs.discover-projects.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.discover-projects.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: npm audit ausfuehren
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          mkdir -p reports
+          name=$(echo "$PROJECT" | tr '/.' '__')
+          [ "$PROJECT" = "." ] && name="root"
+          cd "$PROJECT"
+          npm audit --package-lock-only --audit-level=high --json > "$GITHUB_WORKSPACE/reports/npm-audit-$name.json" || true
+
+      - name: Report als Artefakt hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-${{ strategy.job-index }}
+          path: reports/
+          if-no-files-found: ignore

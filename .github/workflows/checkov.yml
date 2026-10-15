@@ -1,0 +1,44 @@
+name: checkov
+
+# Wiederverwendbarer IaC-Scan (Dockerfile, Compose, GitHub-Workflows, ...) ueber den ganzen Code.
+# Reports landen in reports/checkov/.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    permissions:
+      contents: read # fuer actions/checkout
+      security-events: write # fuer upload-sarif
+      actions: read # nur fuer private Repos bei upload-sarif
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          output_format: cli,sarif,json
+          # "console" = CLI-Ausgabe; die Report-Dateien landen in diesem Verzeichnis
+          output_file_path: console,reports/checkov
+
+      - name: SARIF in Code Scanning hochladen
+        if: always() && hashFiles('reports/checkov/*.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/checkov
+
+      - name: Reports hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-reports
+          path: reports/
+          if-no-files-found: ignore

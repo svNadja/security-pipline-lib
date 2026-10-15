@@ -1,0 +1,66 @@
+name: cargo-audit
+
+# Wiederverwendbare SCA fuer Rust: findet alle Cargo.toml im Repo und prueft jedes Crate.
+# Nur Bericht (nicht blockierend), bis die Baseline abgearbeitet ist. Reports landen in reports/.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. Schritt: Alle Pfade mit einer Cargo.toml automatisch finden
+  discover-crates:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Alle Cargo-Crates finden
+        id: set-matrix
+        run: |
+          crates=$(find . -name "Cargo.toml" -not -path "*/target/*" -not -path "*/node_modules/*" \
+            | sed 's|/Cargo.toml$||; s|^\./||' | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "Gefundene Crates: $crates"
+          echo "matrix=$crates" >> "$GITHUB_OUTPUT"
+
+  # 2. Schritt: cargo-audit ausfuehren und Reports speichern
+  cargo-audit:
+    needs: discover-crates
+    if: needs.discover-crates.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: ${{ fromJSON(needs.discover-crates.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: cargo-audit installieren
+        run: cargo install cargo-audit --locked --version 0.21.0
+
+      - name: cargo audit ausfuehren
+        env:
+          CRATE: ${{ matrix.crate }}
+        run: |
+          mkdir -p reports
+          # Report-Name aus dem Crate-Pfad ("." = Repo-Root)
+          name=$(echo "$CRATE" | tr '/.' '__')
+          [ "$CRATE" = "." ] && name="root"
+          cd "$CRATE"
+          cargo audit --json > "$GITHUB_WORKSPACE/reports/cargo-audit-$name.json" || true
+
+      - name: Report als Artefakt hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-${{ strategy.job-index }}
+          path: reports/
+          if-no-files-found: ignore

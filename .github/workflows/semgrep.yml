@@ -1,0 +1,56 @@
+name: semgrep
+
+# Wiederverwendbares SAST ueber den gesamten Code des Repos.
+# Blockierend bei Findings ab der eingestellten Severity (Standard ERROR). Report landet in reports/.
+on:
+  workflow_call:
+    inputs:
+      rulesets:
+        description: Semgrep-Regelsaetze, durch Leerzeichen getrennt
+        type: string
+        default: p/default p/rust p/typescript p/python
+      severity:
+        description: Minimale Severity (INFO, WARNING, ERROR)
+        type: string
+        default: ERROR
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Semgrep installieren
+        run: pip install semgrep==1.95.0
+
+      - name: Semgrep ausfuehren
+        env:
+          RULESETS: ${{ inputs.rulesets || 'p/default p/rust p/typescript p/python' }}
+          SEVERITY: ${{ inputs.severity || 'ERROR' }}
+        run: |
+          mkdir -p reports
+          args=()
+          for r in $RULESETS; do args+=(--config "$r"); done
+          semgrep scan "${args[@]}" \
+            --severity "$SEVERITY" \
+            --error \
+            --json-output=reports/semgrep-report.json \
+            .
+
+      - name: Report als Artefakt hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: reports/
+          if-no-files-found: ignore

@@ -1,0 +1,104 @@
+name: gitleaks
+
+# Wiederverwendbarer Workflow (Secret-Scanning), Aufruf aus security.yml der Repos.
+# Scannt die gesamte Git-Historie und den ganzen Working Tree. Reports landen in reports/.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Pfad zur Gitleaks-Config im aufrufenden Repo (optional)
+        type: string
+        default: .gitleaks.toml
+      fail-on-leak:
+        description: Pipeline bei Fund fehlschlagen lassen
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.24.2
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # volle Historie fuer "gitleaks git"
+          persist-credentials: false
+
+      - name: Gitleaks version
+        run: docker run --rm "$GITLEAKS_IMAGE" version
+
+      - name: Optionale Parameter bestimmen
+        id: opts
+        env:
+          CONFIG: ${{ inputs.config }}
+        run: |
+          args=""
+          [ -f "$CONFIG" ] && args="$args --config /path/$CONFIG"
+          [ -f .gitleaksignore ] && args="$args --gitleaks-ignore-path /path/.gitleaksignore"
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+          mkdir -p reports
+
+      # PR: nur Commits des PRs; sonst gesamte Historie
+      - name: Scan Git-Historie (JSON + SARIF, Secrets geschwaerzt)
+        id: scan
+        continue-on-error: true
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ARGS: ${{ steps.opts.outputs.args }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            LOG_OPTS="$BASE_SHA..$HEAD_SHA"
+          else
+            LOG_OPTS="--all"
+          fi
+          run_scan() {
+            # shellcheck disable=SC2086
+            docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" git -v \
+              --no-banner --no-color --redact --platform github --timeout 120 \
+              --log-opts="$LOG_OPTS" $ARGS \
+              --report-format "$1" --report-path "/path/reports/$2" /path
+          }
+          rc=0
+          run_scan json  gitleaks-report.json || rc=$?
+          run_scan sarif gitleaks.sarif || true
+          exit $rc
+
+      - name: Scan Working Directory (Dateien, dekodiert/Archive)
+        id: dirscan
+        continue-on-error: true
+        env:
+          ARGS: ${{ steps.opts.outputs.args }}
+        run: |
+          # shellcheck disable=SC2086
+          docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" dir -v \
+            --no-banner --no-color --redact --max-decode-depth 2 --max-archive-depth 2 \
+            --max-target-megabytes 10 $ARGS \
+            --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
+
+      - name: Reports hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-reports
+          path: reports/
+          if-no-files-found: ignore
+
+      - name: Ergebnis auswerten
+        if: always()
+        env:
+          FAIL_ON_LEAK: ${{ inputs.fail-on-leak }}
+          SCAN: ${{ steps.scan.outcome }}
+          DIRSCAN: ${{ steps.dirscan.outcome }}
+        run: |
+          echo "git scan: $SCAN | dir scan: $DIRSCAN"
+          if [ "$FAIL_ON_LEAK" = "true" ] && { [ "$SCAN" = "failure" ] || [ "$DIRSCAN" = "failure" ]; }; then
+            echo "::error::Gitleaks hat Secrets gefunden – siehe Artefakt gitleaks-reports"
+            exit 1
+          fi

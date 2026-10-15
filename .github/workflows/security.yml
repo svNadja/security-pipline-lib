@@ -1,0 +1,38 @@
+name: security
+
+# Security-Pipeline fuer dieses Repo: mindestens drei Scans ueber den gesamten Code.
+#   1. Secrets   (Gitleaks)
+#   2. SAST      (Semgrep)
+#   3. IaC       (Checkov)
+#   4. SCA       (cargo-audit, npm-audit)
+# In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    uses: ./.github/workflows/gitleaks.yml
+
+  sast:
+    uses: ./.github/workflows/semgrep.yml
+
+  iac:
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/checkov.yml
+
+  sca-cargo:
+    uses: ./.github/workflows/cargo-audit.yml
+
+  sca-npm:
+    uses: ./.github/workflows/npm-audit.yml
