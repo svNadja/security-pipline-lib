@@ -26,8 +26,8 @@ jobs:
         with:
           directory: .
           output_format: cli,sarif,json
-          # "console" = CLI-Ausgabe; die Report-Dateien landen in diesem Verzeichnis
-          output_file_path: console,reports/checkov
+          # Genau ein Ziel pro Format, gleiche Reihenfolge wie output_format (cli, sarif, json)
+          output_file_path: console,reports/checkov/results.sarif,reports/checkov/results.json
 
       - name: SARIF in Code Scanning hochladen
         if: always() && hashFiles('reports/checkov/*.sarif') != ''
