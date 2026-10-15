@@ -1,8 +1,9 @@
 .env
 reports/
 .venv
-.idea
-.claude
+.idea/
+.claude/
 modules.xml
 misc.xml
-/reports
+/reports.claude/
+
