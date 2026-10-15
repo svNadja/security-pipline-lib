@@ -44,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - name: cargo-audit installieren
-        run: cargo install cargo-audit --locked --version 0.21.0
+        run: cargo install cargo-audit --locked --version 0.22.2
 
       - name: cargo audit ausfuehren
         env:
