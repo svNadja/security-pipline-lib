@@ -1,1 +1,2 @@
-python3 -m bandit -r . -f json -o bandit-report.json
+mkdir -p reports/bandit
+python3 -m bandit -r . -x ./.venv,./reports -f json -o reports/bandit/bandit-report.json

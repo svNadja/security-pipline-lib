@@ -29,10 +29,25 @@ jobs:
       - name: bandit
         run: bash scripts/bandit.sh
 
-      - name: upload bandit report
+      - name: Report als Job Summary
+        if: always()
+        run: |
+          {
+            echo "## Bandit Report"
+            echo
+            if [ -f reports/bandit/bandit-report.json ]; then
+              echo '```'
+              python3 -m bandit -r . -x ./.venv,./reports -f txt 2>/dev/null || true
+              echo '```'
+            else
+              echo "Kein Report erzeugt."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reports hochladen
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bandit-report
-          path: bandit-report.json
-          if-no-files-found: warn
+          name: bandit-reports
+          path: reports/
+          if-no-files-found: ignore
