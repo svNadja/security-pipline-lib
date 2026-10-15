@@ -1,0 +1,19 @@
+services:
+  openbao:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: openbao-custom:latest
+    container_name: openbao
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - BAO_ADDR=http://127.0.0.1:8200
+    cap_add:
+      - IPC_LOCK # Verhindert, dass Daten auf die Festplatte geswappt werden
+    volumes:
+      - openbao-data:/openbao/file
+
+volumes:
+  openbao-data:
