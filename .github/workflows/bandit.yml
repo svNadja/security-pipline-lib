@@ -26,8 +26,12 @@ jobs:
       - name: install bandit
         run: python3 -m pip install bandit
 
+      # Befehl inline (entspricht scripts/bandit.sh): bei workflow_call enthaelt der
+      # Checkout das aufrufende Repo, nicht dieses -> scripts/ ist dort nicht vorhanden.
       - name: bandit
-        run: bash scripts/bandit.sh
+        run: |
+          mkdir -p reports/bandit
+          python3 -m bandit -r . -x ./.venv,./reports -f json -o reports/bandit/bandit-report.json
 
       - name: Report als Job Summary
         if: always()
