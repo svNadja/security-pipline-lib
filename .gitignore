@@ -3,3 +3,5 @@ reports/
 .venv
 .idea
 .claude
+modules.xml
+misc.xml
