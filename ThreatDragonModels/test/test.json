@@ -1,0 +1,28 @@
+{
+  "version": "2.6.2",
+  "release_version": "",
+  "released_at": "2026-10-16",
+  "summary": {
+    "title": "test",
+    "owner": "Nadja Shvets",
+    "description": "",
+    "id": 0
+  },
+  "detail": {
+    "contributors": [],
+    "diagrams": [
+      {
+        "id": 0,
+        "title": "Neues STRIDE Diagramm",
+        "diagramType": "STRIDE",
+        "placeholder": "Neue STRIDE Diagramm Beschreibung",
+        "thumbnail": "./public/content/images/thumbnail.stride.jpg",
+        "version": "2.6.2",
+        "cells": []
+      }
+    ],
+    "diagramTop": 2,
+    "reviewer": "Nadja Shvets",
+    "threatTop": 0
+  }
+}
