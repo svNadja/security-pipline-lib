@@ -1,10 +1,10 @@
 name: security
 
-# Security-Pipeline fuer dieses Repo: mindestens drei Scans ueber den gesamten Code.
+# Security-Pipeline fuer dieses Repo: Scans ueber den gesamten Code.
 #   1. Secrets   (Gitleaks)
 #   2. SAST      (Semgrep, Bandit fuer Python)
 #   3. IaC       (Checkov)
-#   4. SCA       (cargo-audit, npm-audit)
+#   4. SCA       (cargo-audit, npm-audit, Trivy)
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
 on:
   pull_request: {}
@@ -25,10 +25,6 @@ jobs:
     uses: ./.github/workflows/semgrep.yml
 
   sast-python:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: ./.github/workflows/bandit.yml
 
   iac:
@@ -43,3 +39,9 @@ jobs:
 
   sca-npm:
     uses: ./.github/workflows/npm-audit.yml
+
+  sca-trivi:
+    uses: ./.github/workflows/trivy.yml
+
+  sca-trivy:
+    uses: ./.github/workflows/trivy.yml
