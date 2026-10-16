@@ -21,16 +21,27 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkov
-        uses: bridgecrewio/checkov-action@v12
+      - uses: actions/setup-python@v5
         with:
-          directory: .
-          output_format: cli,sarif,json
-          # Genau ein Ziel pro Format, gleiche Reihenfolge wie output_format (cli, sarif, json)
-          output_file_path: console,reports/checkov/results.sarif,reports/checkov/results.json
+          python-version: "3.12"
 
+      - name: Checkov installieren
+        run: pip install checkov==3.3.29
+
+      # Genau ein Ziel pro Format, gleiche Reihenfolge wie -o (cli, sarif, json)
+      - name: Checkov
+        run: |
+          mkdir -p reports/checkov
+          checkov -d . --skip-path reports \
+            -o cli -o sarif -o json \
+            --output-file-path console,reports/checkov/results.sarif,reports/checkov/results.json
+
+      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
       - name: SARIF in Code Scanning hochladen
-        if: always() && hashFiles('reports/checkov/*.sarif') != ''
+        if: >-
+          always() && hashFiles('reports/checkov/*.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/checkov

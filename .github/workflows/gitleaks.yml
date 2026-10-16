@@ -43,6 +43,19 @@ jobs:
           echo "args=$args" >> "$GITHUB_OUTPUT"
           mkdir -p reports
 
+      # Vor dem Git-Scan, damit reports/ beim Scan keine fremden Reports enthaelt
+      - name: Scan Working Directory (Dateien, dekodiert/Archive)
+        id: dirscan
+        continue-on-error: true
+        env:
+          ARGS: ${{ steps.opts.outputs.args }}
+        run: |
+          # shellcheck disable=SC2086
+          docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" dir -v \
+            --no-banner --no-color --redact --max-decode-depth 2 --max-archive-depth 2 \
+            --max-target-megabytes 10 $ARGS \
+            --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
+
       # PR: nur Commits des PRs; sonst gesamte Historie
       - name: Scan Git-Historie (JSON + SARIF, Secrets geschwaerzt)
         id: scan
@@ -69,18 +82,6 @@ jobs:
           run_scan json  gitleaks-report.json || rc=$?
           run_scan sarif gitleaks.sarif || true
           exit $rc
-
-      - name: Scan Working Directory (Dateien, dekodiert/Archive)
-        id: dirscan
-        continue-on-error: true
-        env:
-          ARGS: ${{ steps.opts.outputs.args }}
-        run: |
-          # shellcheck disable=SC2086
-          docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" dir -v \
-            --no-banner --no-color --redact --max-decode-depth 2 --max-archive-depth 2 \
-            --max-target-megabytes 10 $ARGS \
-            --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
 
       - name: Reports hochladen
         if: always()
