@@ -9,10 +9,6 @@ permissions:
 
 jobs:
   scan:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read # nur fuer private Repos bei upload-sarif
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
