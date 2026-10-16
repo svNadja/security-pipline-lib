@@ -14,7 +14,7 @@ security-pipelines
 │  ├─ checkov.yml       (IaC: Dockerfile, Compose, GH-Workflows)
 │  ├─ cargo-audit.yml   (SCA für Rust, alle Crates)
 │  ├─ npm-audit.yml     (SCA für npm, alle Projekte)
-│  └─ openbao.yml       (CI für das OpenBao-Setup)
+│  └─ openbao.yml       (CI für das OpenBao-Setup) + trivi
 ├─ docker/Dockerfile    (OpenBao-Image mit eingebackener Config)
 ├─ docker-compose.yml   (OpenBao-Container)
 ├─ config/openbao.hcl   (OpenBao-Serverkonfiguration)
