@@ -4,7 +4,7 @@
   "released_at": "2026-10-16",
   "summary": {
     "title": "test",
-    "owner": "Nadja Shvets",
+    "owner": "",
     "description": "",
     "id": 0
   },
@@ -22,7 +22,7 @@
       }
     ],
     "diagramTop": 2,
-    "reviewer": "Nadja Shvets",
+    "reviewer": "",
     "threatTop": 0
   }
 }
