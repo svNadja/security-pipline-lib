@@ -5,6 +5,8 @@ name: security
 #   2. SAST      (Semgrep, Bandit fuer Python)
 #   3. IaC       (Checkov)
 #   4. SCA       (cargo-audit, npm-audit, Trivy)
+#   5. Build     (Docker-Image bauen + Trivy Image-Scan)
+# Alle Jobs laufen parallel (keine needs) -> Laufzeit = laengster Job.
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
 on:
   pull_request: {}
@@ -18,6 +20,11 @@ permissions:
   contents: read
 
 jobs:
+  build:
+    uses: ./.github/workflows/build-scan.yml
+    with:
+      dockerfile: docker/Dockerfile
+
   secrets:
     uses: ./.github/workflows/gitleaks.yml
 
@@ -39,9 +46,6 @@ jobs:
 
   sca-npm:
     uses: ./.github/workflows/npm-audit.yml
-
-  sca-trivi:
-    uses: ./.github/workflows/trivy.yml
 
   sca-trivy:
     uses: ./.github/workflows/trivy.yml
