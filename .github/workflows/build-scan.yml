@@ -1,0 +1,77 @@
+name: build-scan
+
+# Wiederverwendbar: Docker-Image bauen und mit Trivy scannen (OS-Pakete + Libraries im Image).
+# Build und Scan in einem Job -> kein Image-Transfer per Artefakt. Report landet in reports/trivy-image/.
+# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix).
+on:
+  workflow_call:
+    inputs:
+      dockerfile:
+        description: Pfad zum Dockerfile im aufrufenden Repo
+        type: string
+        default: Dockerfile
+      context:
+        description: Build-Kontext
+        type: string
+        default: .
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: scan-target:ci
+
+jobs:
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v3
+
+      # load: Image landet im lokalen Docker-Daemon fuer den Scan; Layer-Cache ueber GitHub Actions
+      - name: Image bauen
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context || '.' }}
+          file: ${{ inputs.dockerfile || 'Dockerfile' }}
+          tags: ${{ env.IMAGE }}
+          load: true
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Report-Ordner anlegen
+        run: mkdir -p reports/trivy-image
+
+      - name: Trivy Image-Report
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}
+          format: json
+          output: reports/trivy-image/trivy-image-report.json
+          exit-code: 0
+
+      - name: Report hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail bei High/Critical
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+          skip-setup-trivy: true
