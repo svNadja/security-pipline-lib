@@ -27,7 +27,9 @@ jobs:
       - name: bandit
         run: |
           mkdir -p reports/bandit
-          python3 -m bandit -r . -x ./.venv,./reports -f json -o reports/bandit/bandit-report.json
+          # Bandit liefert Exit 1 bei jedem Fund; die Policy steht im Schritt "Policy" unten
+          python3 -m bandit -r . -x ./.venv,./reports -f json -o reports/bandit/bandit-report.json || true
+          test -f reports/bandit/bandit-report.json
 
       - name: Report als Job Summary
         if: always()
@@ -51,3 +53,12 @@ jobs:
           name: bandit-reports
           path: reports/
           if-no-files-found: ignore
+
+      - name: Policy (blockiert nur HIGH, MEDIUM/LOW nur Bericht)
+        run: |
+          high=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' reports/bandit/bandit-report.json)
+          echo "Bandit HIGH-Funde: $high"
+          if [ "$high" -gt 0 ]; then
+            echo "::error::Bandit: $high HIGH-Funde"
+            exit 1
+          fi

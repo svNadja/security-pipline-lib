@@ -21,6 +21,10 @@ permissions:
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # fuer upload-sarif
+      actions: read # nur fuer private Repos bei upload-sarif
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +50,19 @@ jobs:
             --severity "$SEVERITY" \
             --error \
             --json-output=reports/semgrep-report.json \
+            --sarif-output=reports/semgrep.sarif \
             .
+
+      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
+      - name: SARIF in Code Scanning hochladen
+        if: >-
+          always() && hashFiles('reports/semgrep.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/semgrep.sarif
+          category: semgrep
 
       - name: Report als Artefakt hochladen
         if: always()

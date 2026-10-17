@@ -1,7 +1,7 @@
 name: cargo-audit
 
 # Wiederverwendbare SCA fuer Rust: findet alle Cargo.toml im Repo und prueft jedes Crate.
-# Nur Bericht (nicht blockierend), bis die Baseline abgearbeitet ist. Reports landen in reports/.
+# Blockierend: jeder gefundene Advisory laesst den Job fehlschlagen. Reports landen in reports/.
 on:
   workflow_call:
   workflow_dispatch:
@@ -33,7 +33,6 @@ jobs:
     needs: discover-crates
     if: needs.discover-crates.outputs.matrix != '[]'
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -55,7 +54,7 @@ jobs:
           name=$(echo "$CRATE" | tr '/.' '__')
           [ "$CRATE" = "." ] && name="root"
           cd "$CRATE"
-          cargo audit --json > "$GITHUB_WORKSPACE/reports/cargo-audit-$name.json" || true
+          cargo audit --json > "$GITHUB_WORKSPACE/reports/cargo-audit-$name.json"
 
       - name: Report als Artefakt hochladen
         if: always()

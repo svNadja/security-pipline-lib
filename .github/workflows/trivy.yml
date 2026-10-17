@@ -1,7 +1,7 @@
 name: trivy
 
-# Wiederverwendbarer SCA-/Vulnerability-Scan (Dateisystem). Report landet in reports/trivy/.
-# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix).
+# Wiederverwendbarer SCA-/Vulnerability-Scan (Dateisystem) inkl. Misconfigurations. Reports landen in reports/trivy/.
+# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix). SARIF geht in den Security-Tab.
 on:
   workflow_call:
   workflow_dispatch:
@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      security-events: write # fuer upload-sarif
+      actions: read # nur fuer private Repos bei upload-sarif
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -28,10 +30,22 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
+          scanners: vuln,misconfig
           output: reports/trivy/trivy-report.json
           format: json
           scan-ref: .
           exit-code: 0
+
+      - name: Generate Trivy SARIF Report
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scanners: vuln,misconfig
+          output: reports/trivy/trivy-report.sarif
+          format: sarif
+          scan-ref: .
+          exit-code: 0
+          skip-setup-trivy: true
 
       - name: Upload Vulnerability Scan Results
         if: always()
@@ -42,10 +56,22 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
 
+      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
+      - name: SARIF in Code Scanning hochladen
+        if: >-
+          always() && hashFiles('reports/trivy/trivy-report.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/trivy/trivy-report.sarif
+          category: trivy-fs
+
       - name: Fail build on High/Criticial Vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
+          scanners: vuln,misconfig
           format: table
           scan-ref: .
           severity: HIGH,CRITICAL

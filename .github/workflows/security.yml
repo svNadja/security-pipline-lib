@@ -1,40 +1,43 @@
 name: security
 
-# Security-Pipeline fuer dieses Repo: Scans ueber den gesamten Code.
-#   1. Secrets   (Gitleaks)
-#   2. SAST      (Semgrep, Bandit fuer Python)
-#   3. IaC       (Checkov)
-#   4. SCA       (cargo-audit, npm-audit, Trivy)
-#   5. Build     (Docker-Image bauen + Trivy Image-Scan)
-# Alle Jobs laufen parallel (keine needs) -> Laufzeit = laengster Job.
+# Security-Pipeline fuer dieses Repo. Stufen ueber "needs":
+#   1. Secrets        Gitleaks (Gate: blockiert alle folgenden Stufen)
+#   2. Statisch       Semgrep, Bandit, Checkov, cargo-audit, npm-audit, Trivy fs (parallel)
+#   3. Build          Docker-Image bauen + Trivy Image-Scan
+#   4. Integration    OpenBao
+#   5. security-gate  Zusammenfassung; required check fuer Branch Protection
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
 on:
   pull_request: {}
   push:
     branches: [main]
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 2 * * *" # nightly: neue CVEs in SCA und Trivy
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    uses: ./.github/workflows/build-scan.yml
-    with:
-      dockerfile: docker/Dockerfile
-
+  # 1. Stufe: Secrets (Gate)
   secrets:
     uses: ./.github/workflows/gitleaks.yml
 
+  # 2. Stufe: statische Analyse
   sast:
+    needs: secrets
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/semgrep.yml
 
   sast-python:
+    needs: secrets
     uses: ./.github/workflows/bandit.yml
 
   iac:
+    needs: secrets
     permissions:
       contents: read
       security-events: write
@@ -42,10 +45,53 @@ jobs:
     uses: ./.github/workflows/checkov.yml
 
   sca-cargo:
+    needs: secrets
     uses: ./.github/workflows/cargo-audit.yml
 
   sca-npm:
+    needs: secrets
     uses: ./.github/workflows/npm-audit.yml
 
   sca-trivy:
+    needs: secrets
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     uses: ./.github/workflows/trivy.yml
+
+  # 3. Stufe: Build-nahe Pruefung
+  build:
+    needs: secrets
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/build-scan.yml
+    with:
+      dockerfile: docker/Dockerfile
+
+  # 4. Stufe: Integration
+  openbao:
+    needs: build
+    uses: ./.github/workflows/openbao.yml
+
+  # 5. Stufe: Gate (laeuft auch bei Fehlern in Vorstufen)
+  security-gate:
+    if: always()
+    needs: [secrets, sast, sast-python, iac, sca-cargo, sca-npm, sca-trivy, build, openbao]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnisse auswerten
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          {
+            echo "## Security-Gate"
+            jq -r 'to_entries[] | "- \(.key): \(.value.result)"' <<< "$NEEDS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          failed=$(jq -r '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key] | join(", ")' <<< "$NEEDS")
+          if [ -n "$failed" ]; then
+            echo "::error::Blockierende Stufen fehlgeschlagen: $failed"
+            exit 1
+          fi

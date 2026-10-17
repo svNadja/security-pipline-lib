@@ -1,7 +1,7 @@
 name: npm-audit
 
 # Wiederverwendbare SCA fuer npm: findet alle package-lock.json im Repo und prueft jedes Projekt.
-# Nur Bericht (nicht blockierend). Reports landen in reports/.
+# Blockierend ab Severity high (--audit-level=high). Reports landen in reports/.
 on:
   workflow_call:
   workflow_dispatch:
@@ -31,7 +31,6 @@ jobs:
     needs: discover-projects
     if: needs.discover-projects.outputs.matrix != '[]'
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +52,7 @@ jobs:
           name=$(echo "$PROJECT" | tr '/.' '__')
           [ "$PROJECT" = "." ] && name="root"
           cd "$PROJECT"
-          npm audit --package-lock-only --audit-level=high --json > "$GITHUB_WORKSPACE/reports/npm-audit-$name.json" || true
+          npm audit --package-lock-only --audit-level=high --json > "$GITHUB_WORKSPACE/reports/npm-audit-$name.json"
 
       - name: Report als Artefakt hochladen
         if: always()

@@ -13,6 +13,7 @@ on:
         description: Pipeline bei Fund fehlschlagen lassen
         type: boolean
         default: true
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -43,8 +44,10 @@ jobs:
           echo "args=$args" >> "$GITHUB_OUTPUT"
           mkdir -p reports
 
-      # Vor dem Git-Scan, damit reports/ beim Scan keine fremden Reports enthaelt
+      # Vor dem Git-Scan, damit reports/ beim Scan keine fremden Reports enthaelt.
+      # Nur Push/Nightly: auf PRs wird ausschliesslich der Diff geprueft (Git-Scan unten).
       - name: Scan Working Directory (Dateien, dekodiert/Archive)
+        if: github.event_name != 'pull_request'
         id: dirscan
         continue-on-error: true
         env:
