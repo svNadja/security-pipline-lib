@@ -25,7 +25,7 @@ jobs:
 
   # 2. Stufe: statische Analyse
   sast:
-    needs: secrets
+    #needs: secrets
     permissions:
       contents: read
       security-events: write
@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/bandit.yml
 
   iac:
-    needs: secrets
+    #needs: secrets
     permissions:
       contents: read
       security-events: write
@@ -53,7 +53,7 @@ jobs:
     uses: ./.github/workflows/npm-audit.yml
 
   sca-trivy:
-    needs: secrets
+    #needs: secrets
     permissions:
       contents: read
       security-events: write
@@ -62,7 +62,7 @@ jobs:
 
   # 3. Stufe: Build-nahe Pruefung
   build:
-    needs: secrets
+    #needs: secrets
     permissions:
       contents: read
       security-events: write
