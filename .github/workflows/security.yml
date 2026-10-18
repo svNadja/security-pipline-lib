@@ -4,8 +4,7 @@ name: security
 #   1. Secrets        Gitleaks (Gate: blockiert alle folgenden Stufen)
 #   2. Statisch       Semgrep, Bandit, Checkov, cargo-audit, npm-audit, Trivy fs (parallel)
 #   3. Build          Docker-Image bauen + Trivy Image-Scan
-#   4. Integration    OpenBao
-#   5. security-gate  Zusammenfassung; required check fuer Branch Protection
+#   4. security-gate  Zusammenfassung; required check fuer Branch Protection
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
 on:
   pull_request: {}
@@ -64,13 +63,7 @@ jobs:
     with:
       dockerfile: docker/Dockerfile
 
-  # 4. Stufe: Integration
-  openbao:
-    if: always()
-    needs: build
-    uses: ./.github/workflows/openbao.yml
-
-  # 5. Stufe: Gate (laeuft auch bei Fehlern in Vorstufen)
+  # 4. Stufe: Gate (laeuft auch bei Fehlern in Vorstufen)
   security-gate:
     if: always()
     needs: [secrets, sast, sast-python, iac, sca-cargo, sca-npm, sca-trivy, build, openbao]
