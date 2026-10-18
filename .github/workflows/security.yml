@@ -73,6 +73,7 @@ jobs:
 
   # 4. Stufe: Integration
   openbao:
+    if: always()
     needs: build
     uses: ./.github/workflows/openbao.yml
 

@@ -1,7 +1,7 @@
 name: trivy
 
 # Wiederverwendbarer SCA-/Vulnerability-Scan (Dateisystem) inkl. Misconfigurations. Reports landen in reports/trivy/.
-# Nicht blockierend: HIGH/CRITICAL-Funde (nur mit verfuegbarem Fix) brechen den Lauf nicht ab. SARIF geht in den Security-Tab.
+# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix). SARIF geht in den Security-Tab.
 on:
   workflow_call:
   workflow_dispatch:
@@ -68,7 +68,6 @@ jobs:
           category: trivy-fs
 
       - name: Fail build on High/Criticial Vulnerabilities
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
