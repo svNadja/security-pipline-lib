@@ -66,7 +66,7 @@ jobs:
   # 4. Stufe: Gate (laeuft auch bei Fehlern in Vorstufen)
   security-gate:
     if: always()
-    needs: [secrets, sast, sast-python, iac, sca-cargo, sca-npm, sca-trivy, build, openbao]
+    needs: [secrets, sast, sast-python, iac, sca-cargo, sca-npm, sca-trivy, build]
     runs-on: ubuntu-latest
     steps:
       - name: Ergebnisse auswerten
