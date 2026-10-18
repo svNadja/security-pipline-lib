@@ -7,6 +7,7 @@ name: security
 #   4. security-gate  Zusammenfassung; required check fuer Branch Protection
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
 on:
+  workflow_call: # Aufruf aus den Repos (z.B. build.yml)
   pull_request: {}
   push:
     branches: [main]
