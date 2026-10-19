@@ -56,16 +56,6 @@ jobs:
           output: reports/trivy-image/trivy-image-report.json
           exit-code: 0
 
-      - name: Trivy Image-Report (SARIF)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: ${{ env.IMAGE }}
-          format: sarif
-          output: reports/trivy-image/trivy-image-report.sarif
-          exit-code: 0
-          skip-setup-trivy: true
-
       - name: Report hochladen
         if: always()
         uses: actions/upload-artifact@v4
