@@ -11,10 +11,6 @@ permissions:
 
 jobs:
   scan:
-    permissions:
-      contents: read # fuer actions/checkout
-      security-events: write # fuer upload-sarif
-      actions: read # nur fuer private Repos bei upload-sarif
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,16 +31,6 @@ jobs:
           checkov -d . --skip-path reports \
             -o cli -o sarif -o json \
             --output-file-path console,reports/checkov/results.sarif,reports/checkov/results.json
-
-      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
-      - name: SARIF in Code Scanning hochladen
-        if: >-
-          always() && hashFiles('reports/checkov/*.sarif') != '' &&
-          (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/checkov
 
       - name: Reports hochladen
         if: always()

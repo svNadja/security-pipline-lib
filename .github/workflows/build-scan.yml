@@ -25,10 +25,6 @@ env:
 jobs:
   build-scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write # fuer upload-sarif
-      actions: read # nur fuer private Repos bei upload-sarif
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,17 +65,6 @@ jobs:
           output: reports/trivy-image/trivy-image-report.sarif
           exit-code: 0
           skip-setup-trivy: true
-
-      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
-      - name: SARIF in Code Scanning hochladen
-        if: >-
-          always() && hashFiles('reports/trivy-image/*.sarif') != '' &&
-          (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/trivy-image/trivy-image-report.sarif
-          category: trivy-image
 
       - name: Report hochladen
         if: always()

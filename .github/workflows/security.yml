@@ -25,20 +25,12 @@ jobs:
 
   # 2. Stufe: statische Analyse
   sast:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: ./.github/workflows/semgrep.yml
 
   sast-python:
     uses: ./.github/workflows/bandit.yml
 
   iac:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: ./.github/workflows/checkov.yml
 
   sca-cargo:
@@ -48,18 +40,10 @@ jobs:
     uses: ./.github/workflows/npm-audit.yml
 
   sca-trivy:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: ./.github/workflows/trivy.yml
 
   # 3. Stufe: Build-nahe Pruefung
   build:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: ./.github/workflows/build-scan.yml
     with:
       dockerfile: docker/Dockerfile

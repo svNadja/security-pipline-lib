@@ -76,12 +76,12 @@ Bandit (HIGH). Warnend: MEDIUM/LOW und Semgrep-Hinweise (nur Report).
 |-------------------|---------------------------------------------------------------|-----------------------------|---------------------------------------------|
 | `gitleaks.yml`    | Secrets in Git-Historie und Dateien (Inputs `config`, `fail-on-leak`) | ja (`fail-on-leak`, Standard `true`) | `reports/gitleaks-*.json`, `gitleaks.sarif` |
 | `semgrep.yml`     | SAST (Inputs `rulesets`, `severity`; Standard: default, rust, typescript, python, ab ERROR) | ja (`--error`) | `reports/semgrep-report.json`               |
-| `checkov.yml`     | IaC-Scan, SARIF-Upload in Code Scanning                       | ja                          | `reports/checkov/`                          |
+| `checkov.yml`     | IaC-Scan                                                      | ja                          | `reports/checkov/`                          |
 | `bandit.yml`      | SAST für Python                                               | ja (nur HIGH)               | `reports/bandit/bandit-report.json`         |
 | `cargo-audit.yml` | Findet alle `Cargo.toml`, `cargo audit` je Crate              | ja                          | `reports/cargo-audit-<crate>.json`          |
 | `npm-audit.yml`   | Findet alle `package-lock.json`, `npm audit` je Projekt       | ja (ab `high`)              | `reports/npm-audit-<projekt>.json`          |
-| `trivy.yml`       | Trivy Dateisystem: Vulnerabilities + Misconfigurations, SARIF | ja (HIGH/CRITICAL, mit Fix) | `reports/trivy/`                            |
-| `build-scan.yml`  | Docker-Image bauen, Trivy Image-Scan, SARIF-Upload            | ja (HIGH/CRITICAL, mit Fix) | `reports/trivy-image/`                      |
+| `trivy.yml`       | Trivy Dateisystem: Vulnerabilities + Misconfigurations        | ja (HIGH/CRITICAL, mit Fix) | `reports/trivy/`                            |
+| `build-scan.yml`  | Docker-Image bauen, Trivy Image-Scan                          | ja (HIGH/CRITICAL, mit Fix) | `reports/trivy-image/`                      |
 | `openbao.yml`     | CI: OpenBao-Image bauen, Container starten, Health prüfen     | ja                          | –                                           |
 
 ## Aufruf aus einem Repo
@@ -106,17 +106,9 @@ jobs:
     uses: org/security-pipelines/.github/workflows/gitleaks.yml@<sha>
   sast:
     needs: secrets
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: org/security-pipelines/.github/workflows/semgrep.yml@<sha>
   iac:
     needs: secrets
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
     uses: org/security-pipelines/.github/workflows/checkov.yml@<sha>
   sca-cargo:
     needs: secrets

@@ -1,7 +1,7 @@
 name: trivy
 
 # Wiederverwendbarer SCA-/Vulnerability-Scan (Dateisystem) inkl. Misconfigurations. Reports landen in reports/trivy/.
-# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix). SARIF geht in den Security-Tab.
+# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix). SARIF liegt im Report-Artefakt.
 on:
   workflow_call:
   workflow_dispatch:
@@ -12,10 +12,6 @@ permissions:
 jobs:
   trivy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write # fuer upload-sarif
-      actions: read # nur fuer private Repos bei upload-sarif
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -55,17 +51,6 @@ jobs:
           path: reports/
           if-no-files-found: ignore
           retention-days: 30
-
-      # Fork-PRs haben nur Leserechte -> kein Upload in Code Scanning
-      - name: SARIF in Code Scanning hochladen
-        if: >-
-          always() && hashFiles('reports/trivy/trivy-report.sarif') != '' &&
-          (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/trivy/trivy-report.sarif
-          category: trivy-fs
 
       - name: Fail build on High/Criticial Vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
