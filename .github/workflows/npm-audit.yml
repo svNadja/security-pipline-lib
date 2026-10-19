@@ -48,7 +48,9 @@ jobs:
         env:
           PROJECT: ${{ matrix.project }}
         run: |
-          mkdir -p reports
+          if [ ! -d reports ]; then
+            mkdir reports
+          fi
           name=$(echo "$PROJECT" | tr '/.' '__')
           [ "$PROJECT" = "." ] && name="root"
           cd "$PROJECT"
