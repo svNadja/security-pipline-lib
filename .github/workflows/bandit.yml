@@ -46,6 +46,16 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Ohne Funde kein Report: leere Datei oder JSON ohne results/errors wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          f=reports/bandit/bandit-report.json
+          if [ -f "$f" ] && { [ ! -s "$f" ] || jq -e '(.results | length) == 0 and (.errors | length) == 0' "$f" > /dev/null 2>&1; }; then
+            rm "$f"
+            echo "bandit: keine Fehler gefunden"
+          fi
+
       - name: Reports hochladen
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,7 +66,9 @@ jobs:
 
       - name: Policy (blockiert nur HIGH, MEDIUM/LOW nur Bericht)
         run: |
-          high=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' reports/bandit/bandit-report.json)
+          # Kein Report = keine Funde (Report wird ohne Funde entfernt)
+          high=0
+          [ -f reports/bandit/bandit-report.json ] && high=$(jq '[.results[] | select(.issue_severity == "HIGH")] | length' reports/bandit/bandit-report.json)
           echo "Bandit HIGH-Funde: $high"
           if [ "$high" -gt 0 ]; then
             echo "::error::Bandit: $high HIGH-Funde"

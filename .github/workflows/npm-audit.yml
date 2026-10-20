@@ -56,6 +56,18 @@ jobs:
           cd "$PROJECT"
           npm audit --package-lock-only --audit-level=high --json > "$GITHUB_WORKSPACE/reports/npm-audit-$name.json"
 
+      # Ohne Funde kein Report: leere Datei oder JSON ohne Vulnerabilities wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          for f in reports/npm-audit-*.json; do
+            [ -f "$f" ] || continue
+            if [ ! -s "$f" ] || jq -e '.metadata.vulnerabilities.total == 0' "$f" > /dev/null 2>&1; then
+              rm "$f"
+              echo "npm-audit: keine Fehler gefunden ($(basename "$f"))"
+            fi
+          done
+
       - name: Report als Artefakt hochladen
         if: always()
         uses: actions/upload-artifact@v4

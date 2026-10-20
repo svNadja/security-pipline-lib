@@ -32,6 +32,16 @@ jobs:
           scan-ref: .
           exit-code: 0
 
+      # Ohne Funde kein Report: leere Datei oder JSON ohne Vulnerabilities/Misconfigurations/Secrets wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          f=reports/trivy/trivy-report.json
+          if [ -f "$f" ] && { [ ! -s "$f" ] || jq -e '[.Results[]? | ((.Vulnerabilities // []) + (.Misconfigurations // []) + (.Secrets // []))] | length == 0' "$f" > /dev/null 2>&1; }; then
+            rm "$f"
+            echo "trivy: keine Fehler gefunden"
+          fi
+
       - name: Upload Vulnerability Scan Results
         if: always()
         uses: actions/upload-artifact@v4

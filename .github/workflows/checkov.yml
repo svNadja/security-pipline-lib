@@ -32,6 +32,16 @@ jobs:
             -o cli -o json \
             --output-file-path console,reports/checkov/results.json
 
+      # Ohne Funde kein Report: leere Datei oder JSON ohne failed_checks wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          f=reports/checkov/results.json
+          if [ -f "$f" ] && { [ ! -s "$f" ] || jq -e '[.. | objects | (.failed_checks? // [])[]] | length == 0' "$f" > /dev/null 2>&1; }; then
+            rm "$f"
+            echo "checkov: keine Fehler gefunden"
+          fi
+
       - name: Reports hochladen
         if: always()
         uses: actions/upload-artifact@v4

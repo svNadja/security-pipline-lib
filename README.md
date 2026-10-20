@@ -50,7 +50,8 @@ Trigger: push / pull_request / schedule (nightly) / workflow_dispatch
 
 Alle Workflows sind wiederverwendbar (`workflow_call`) und per `workflow_dispatch` einzeln testbar.
 Die Scans prüfen den **gesamten Code** des aufrufenden Repos und schreiben ihre Reports nach
-`reports/` (als Artefakt hochgeladen, per `.gitignore` nicht im Repo).
+`reports/` (als Artefakt hochgeladen, per `.gitignore` nicht im Repo). Ohne Funde wird kein Report
+erstellt (leere Datei oder leeres JSON wird entfernt); der Log meldet stattdessen „keine Fehler gefunden“.
 
 `security.yml` läuft in Stufen (über `needs`):
 

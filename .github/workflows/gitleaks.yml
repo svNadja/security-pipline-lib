@@ -53,11 +53,17 @@ jobs:
         env:
           ARGS: ${{ steps.opts.outputs.args }}
         run: |
+          rc=0
           # shellcheck disable=SC2086
           docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" dir -v \
             --no-banner --no-color --redact --max-decode-depth 2 \
             --max-target-megabytes 10 $ARGS \
-            --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
+            --report-format json --report-path /path/reports/gitleaks-dir-report.json /path || rc=$?
+          # Scan abgebrochen ohne Report: Fehlerdatei statt fehlendem Artefakt
+          if [ "$rc" -ne 0 ] && [ ! -f reports/gitleaks-dir-report.json ]; then
+            echo "gitleaks dir scan failed (exit $rc), kein Report erzeugt" > reports/gitleaks-dir-error.txt
+          fi
+          exit $rc
 
       # PR: nur Commits des PRs; sonst gesamte Historie
       - name: Scan Git-Historie (JSON, Secrets geschwaerzt)
@@ -89,6 +95,18 @@ jobs:
             echo "gitleaks git scan failed (exit $rc), kein Report erzeugt" > reports/gitleaks-error.txt
           fi
           exit $rc
+
+      # Ohne Funde kein Report: leere Datei oder leeres JSON ([] / {} / null) wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          for f in reports/gitleaks-report.json reports/gitleaks-dir-report.json; do
+            [ -f "$f" ] || continue
+            if [ ! -s "$f" ] || jq -e 'length == 0' "$f" > /dev/null 2>&1; then
+              rm "$f"
+              echo "$(basename "$f"): keine Fehler gefunden"
+            fi
+          done
 
       - name: Reports hochladen
         if: always()

@@ -48,6 +48,16 @@ jobs:
             --json-output=reports/semgrep-report.json \
             .
 
+      # Ohne Funde kein Report: leere Datei oder JSON ohne results/errors wird entfernt
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          f=reports/semgrep-report.json
+          if [ -f "$f" ] && { [ ! -s "$f" ] || jq -e '(.results | length) == 0 and (.errors | length) == 0' "$f" > /dev/null 2>&1; }; then
+            rm "$f"
+            echo "semgrep: keine Fehler gefunden"
+          fi
+
       - name: Report als Artefakt hochladen
         if: always()
         uses: actions/upload-artifact@v4
