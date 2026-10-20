@@ -55,7 +55,7 @@ jobs:
         run: |
           # shellcheck disable=SC2086
           docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" dir -v \
-            --no-banner --no-color --redact --max-decode-depth 2 --max-archive-depth 2 \
+            --no-banner --no-color --redact --max-decode-depth 2 \
             --max-target-megabytes 10 $ARGS \
             --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
 
@@ -63,6 +63,7 @@ jobs:
       - name: Scan Git-Historie (JSON, Secrets geschwaerzt)
         id: scan
         continue-on-error: true
+        timeout-minutes: 15
         env:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -77,12 +78,16 @@ jobs:
           run_scan() {
             # shellcheck disable=SC2086
             docker run --rm -v "$(pwd)":/path -w /path "$GITLEAKS_IMAGE" git -v \
-              --no-banner --no-color --redact --platform github --timeout 120 \
+              --no-banner --no-color --redact --platform github \
               --log-opts="$LOG_OPTS" $ARGS \
               --report-format "$1" --report-path "/path/reports/$2" /path
           }
           rc=0
           run_scan json  gitleaks-report.json || rc=$?
+          # Scan abgebrochen ohne Report: Fehlerdatei statt fehlendem Artefakt
+          if [ "$rc" -ne 0 ] && [ ! -f reports/gitleaks-report.json ]; then
+            echo "gitleaks git scan failed (exit $rc), kein Report erzeugt" > reports/gitleaks-error.txt
+          fi
           exit $rc
 
       - name: Reports hochladen
@@ -101,7 +106,7 @@ jobs:
           DIRSCAN: ${{ steps.dirscan.outcome }}
         run: |
           echo "git scan: $SCAN | dir scan: $DIRSCAN"
-          if [ "$FAIL_ON_LEAK" = "true" ] && { [ "$SCAN" = "failure" ] || [ "$DIRSCAN" = "failure" ]; }; then
+          if [ "$FAIL_ON_LEAK" = "true" ] && { [ "$SCAN" = "failure" ] || [ "$SCAN" = "cancelled" ] || [ "$DIRSCAN" = "failure" ] || [ "$DIRSCAN" = "cancelled" ]; }; then
             echo "::error::Gitleaks hat Secrets gefunden – siehe Artefakt gitleaks-reports"
             exit 1
           fi
