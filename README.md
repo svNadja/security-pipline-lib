@@ -74,7 +74,7 @@ Bandit (HIGH). Warnend: MEDIUM/LOW und Semgrep-Hinweise (nur Report).
 
 | Workflow          | Zweck                                                         | Blockierend                 | Report                                      |
 |-------------------|---------------------------------------------------------------|-----------------------------|---------------------------------------------|
-| `gitleaks.yml`    | Secrets in Git-Historie und Dateien (Inputs `config`, `fail-on-leak`) | ja (`fail-on-leak`, Standard `true`) | `reports/gitleaks-*.json`, `gitleaks.sarif` |
+| `gitleaks.yml`    | Secrets in Git-Historie und Dateien (Inputs `config`, `fail-on-leak`) | ja (`fail-on-leak`, Standard `true`) | `reports/gitleaks-*.json` |
 | `semgrep.yml`     | SAST (Inputs `rulesets`, `severity`; Standard: default, rust, typescript, python, ab ERROR) | ja (`--error`) | `reports/semgrep-report.json`               |
 | `checkov.yml`     | IaC-Scan                                                      | ja                          | `reports/checkov/`                          |
 | `bandit.yml`      | SAST für Python                                               | ja (nur HIGH)               | `reports/bandit/bandit-report.json`         |

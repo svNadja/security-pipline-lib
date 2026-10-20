@@ -24,13 +24,13 @@ jobs:
       - name: Checkov installieren
         run: pip install checkov==3.3.29
 
-      # Genau ein Ziel pro Format, gleiche Reihenfolge wie -o (cli, sarif, json)
+      # Genau ein Ziel pro Format, gleiche Reihenfolge wie -o (cli, json)
       - name: Checkov
         run: |
           mkdir -p reports/checkov
           checkov -d . --skip-path reports \
-            -o cli -o sarif -o json \
-            --output-file-path console,reports/checkov/results.sarif,reports/checkov/results.json
+            -o cli -o json \
+            --output-file-path console,reports/checkov/results.json
 
       - name: Reports hochladen
         if: always()

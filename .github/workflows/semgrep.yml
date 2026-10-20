@@ -46,7 +46,6 @@ jobs:
             --severity "$SEVERITY" \
             --error \
             --json-output=reports/semgrep-report.json \
-            --sarif-output=reports/semgrep.sarif \
             .
 
       - name: Report als Artefakt hochladen

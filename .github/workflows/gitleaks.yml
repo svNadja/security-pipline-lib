@@ -60,7 +60,7 @@ jobs:
             --report-format json --report-path /path/reports/gitleaks-dir-report.json /path
 
       # PR: nur Commits des PRs; sonst gesamte Historie
-      - name: Scan Git-Historie (JSON + SARIF, Secrets geschwaerzt)
+      - name: Scan Git-Historie (JSON, Secrets geschwaerzt)
         id: scan
         continue-on-error: true
         env:
@@ -83,7 +83,6 @@ jobs:
           }
           rc=0
           run_scan json  gitleaks-report.json || rc=$?
-          run_scan sarif gitleaks.sarif || true
           exit $rc
 
       - name: Reports hochladen

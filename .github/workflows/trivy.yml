@@ -1,7 +1,7 @@
 name: trivy
 
 # Wiederverwendbarer SCA-/Vulnerability-Scan (Dateisystem) inkl. Misconfigurations. Reports landen in reports/trivy/.
-# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix). SARIF liegt im Report-Artefakt.
+# Blockierend bei HIGH/CRITICAL (nur Funde mit verfuegbarem Fix).
 on:
   workflow_call:
   workflow_dispatch:
@@ -31,17 +31,6 @@ jobs:
           format: json
           scan-ref: .
           exit-code: 0
-
-      - name: Generate Trivy SARIF Report
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: "fs"
-          scanners: vuln,misconfig
-          output: reports/trivy/trivy-report.sarif
-          format: sarif
-          scan-ref: .
-          exit-code: 0
-          skip-setup-trivy: true
 
       - name: Upload Vulnerability Scan Results
         if: always()
