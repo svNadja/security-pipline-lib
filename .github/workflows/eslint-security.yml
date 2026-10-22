@@ -1,0 +1,135 @@
+name: eslint-security
+
+# ESLint mit Security-Plugins fuer JavaScript/TypeScript/React
+# Findet alle npm-Projekte und prueft jeden mit ESLint
+# Blockierend ab Severity error. Reports landen in reports/.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Alle npm-Projekte finden
+        id: set-matrix
+        run: |
+          projects=$(find . -name "package.json" -not -path "*/node_modules/*" \
+            | sed 's|/package.json$||; s|^\./||; /^$/d' | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "Gefundene Projekte: $projects"
+          echo "matrix=$projects" >> "$GITHUB_OUTPUT"
+
+  lint-security:
+    needs: discover-projects
+    if: needs.discover-projects.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.discover-projects.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: npm ci ausfuehren
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          [ "$PROJECT" = "." ] && cd . || cd "$PROJECT"
+          npm ci
+
+      - name: ESLint mit Security-Checks ausfuehren
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          mkdir -p reports
+          name=$(echo "$PROJECT" | tr '/.' '__')
+          [ "$PROJECT" = "." ] && name="root"
+
+          cd "$PROJECT"
+          # ESLint mit Security-Fokus auf src/ oder Wurzel
+          if [ -d src ]; then
+            npx eslint src --ext .ts,.tsx,.js,.jsx --format json --output-file "$GITHUB_WORKSPACE/reports/eslint-security-$name.json" || true
+          else
+            npx eslint . --ext .ts,.tsx,.js,.jsx --format json --output-file "$GITHUB_WORKSPACE/reports/eslint-security-$name.json" || true
+          fi
+
+      - name: Report als Job Summary
+        if: always()
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          name=$(echo "$PROJECT" | tr '/.' '__')
+          [ "$PROJECT" = "." ] && name="root"
+
+          {
+            echo "## ESLint Security Report ($PROJECT)"
+            echo
+            if [ -f "reports/eslint-security-$name.json" ]; then
+              total=$(jq 'length' "reports/eslint-security-$name.json" 2>/dev/null || echo 0)
+              errors=$(jq '[.[] | select(.severity == "error")] | length' "reports/eslint-security-$name.json" 2>/dev/null || echo 0)
+              warnings=$(jq '[.[] | select(.severity == "warning")] | length' "reports/eslint-security-$name.json" 2>/dev/null || echo 0)
+              echo "Gesamt: $total | Errors: $errors | Warnings: $warnings"
+              echo
+              if [ "$total" -gt 0 ]; then
+                echo '```json'
+                jq '.' "reports/eslint-security-$name.json" 2>/dev/null | head -50
+                echo '```'
+              fi
+            else
+              echo "Kein Report erzeugt."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Leere Reports entfernen
+        if: always()
+        run: |
+          for f in reports/eslint-security-*.json; do
+            [ -f "$f" ] || continue
+            # Leere JSON-Array oder Datei entfernen
+            if [ ! -s "$f" ] || jq -e 'length == 0' "$f" > /dev/null 2>&1; then
+              rm "$f"
+              echo "eslint-security: keine Fehler gefunden ($(basename "$f"))"
+            fi
+          done
+
+      - name: Reports hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-security-reports-${{ strategy.job-index }}
+          path: reports/
+          if-no-files-found: ignore
+
+      - name: Policy (blockiert nur error-Level)
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          name=$(echo "$PROJECT" | tr '/.' '__')
+          [ "$PROJECT" = "." ] && name="root"
+
+          # Kein Report = keine Funde (Report wird ohne Funde entfernt)
+          errors=0
+          if [ -f "reports/eslint-security-$name.json" ]; then
+            errors=$(jq '[.[] | select(.severity == "error")] | length' "reports/eslint-security-$name.json")
+          fi
+          echo "ESLint Errors ($PROJECT): $errors"
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::ESLint: $errors Error-Level Funde in $PROJECT"
+            exit 1
+          fi

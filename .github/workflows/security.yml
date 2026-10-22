@@ -2,7 +2,7 @@ name: security
 
 # Security-Pipeline fuer dieses Repo. Stufen ueber "needs":
 #   1. Secrets        Gitleaks (Gate: blockiert alle folgenden Stufen)
-#   2. Statisch       Semgrep, Bandit, Checkov, cargo-audit, npm-audit, Trivy fs (parallel)
+#   2. Statisch       Semgrep, Bandit, ESLint, Checkov, cargo-audit, npm-audit, Trivy fs (parallel)
 #   3. Build          Docker-Image bauen + Trivy Image-Scan
 #   4. security-gate  Zusammenfassung; required check fuer Branch Protection
 # In anderen Repos stattdessen per "uses: org/security-pipelines/.github/workflows/<name>.yml@<sha>" aufrufen.
@@ -30,6 +30,9 @@ jobs:
   sast-python:
     uses: ./.github/workflows/bandit.yml
 
+  sast-javascript:
+    uses: ./.github/workflows/eslint-security.yml
+
   iac:
     uses: ./.github/workflows/checkov.yml
 
@@ -51,7 +54,7 @@ jobs:
   # 4. Stufe: Gate (laeuft auch bei Fehlern in Vorstufen)
   security-gate:
     if: always()
-    needs: [secrets, sast, sast-python, iac, sca-cargo, sca-npm, sca-trivy, build]
+    needs: [secrets, sast, sast-python, sast-javascript, iac, sca-cargo, sca-npm, sca-trivy, build]
     runs-on: ubuntu-latest
     steps:
       - name: Ergebnisse auswerten
