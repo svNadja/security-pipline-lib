@@ -1,6 +1,6 @@
 # security-pipelines
 
-Zentrales privates Repo mit GitHub-Workflows für Security-Checks.
+Zentrales public Repo mit GitHub-Workflows für Security-Checks.
 Die einzelnen Repos sollen sie per `uses:` einbinden und brauchen nur eine kurze `security.yml`.
 
 ## Struktur
